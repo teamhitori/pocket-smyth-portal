@@ -1,0 +1,42 @@
+# ===== Dependencies =====
+node_modules/
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# ===== Build output =====
+dist/
+build/
+.next/
+out/
+
+# ===== Environment =====
+.env
+.env.*
+!.env.example
+
+# ===== OS & Editor =====
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+.vscode/
+!.vscode/settings.json.example
+.idea/
+
+# ===== Logs & Temp =====
+*.log
+tmp/
+temp/
+logs/
+
+# ===== Azure Functions =====
+.python_packages/
+local.settings.json
+
+# ===== Test =====
+.coverage
+htmlcov/
+.pytest_cache/
