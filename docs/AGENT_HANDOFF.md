@@ -1,115 +1,80 @@
 # Agent Handoff — pocket-smyth-portal
 
-This document provides context for an AI agent working on this repo.
+Context document for AI agents continuing work on this repo.
 
 ## Project Summary
 
-**Pocket Smyth Portal** is the user-facing application layer for the Pocket Smyth multi-tenant AI agent platform. It contains:
+**Pocket Smyth Portal** is the user-facing application layer for the Pocket Smyth multi-tenant AI agent platform:
 
-- **Portal UI** (`portal/`) — Next.js 14 app at `app.teamhitori.com`
-- **Control Plane API** (`api/`) — FastAPI at `app.teamhitori.com/api`
-- **Provisioning Functions** (`functions/`) — Azure Functions for async user stack creation
+- **Portal UI** (`portal/`) — Next.js 14, serves `login.teamhitori.com` and `{username}.teamhitori.com`
+- **Control Plane API** (`api/`) — FastAPI at `{username}.teamhitori.com/api/*`
+- **Provisioning Functions** (`functions/`) — Azure Functions triggered by Azure Queue Storage
 
 ## Current State
 
 | Component | Status |
 |-----------|--------|
-| Repository created | ✅ |
+| Architecture decisions (AD-1–AD-9) | ✅ Finalized |
+| Architecture document | ✅ `docs/ARCHITECTURE.md` |
 | Portal UI scaffolded | ⬜ Not started |
 | Control Plane API scaffolded | ⬜ Not started |
 | Azure Functions scaffolded | ⬜ Not started |
 | docker-compose.yml for local dev | ⬜ Not started |
 
-## Architecture Context
+## Quick Reference
 
 ```
-teamhitori.com                    → team-hitori-landing (separate repo)
-app.teamhitori.com               → THIS REPO: Portal UI
-app.teamhitori.com/api           → THIS REPO: Control Plane API
-{username}.teamhitori.com        → Per-user Agent Zero (managed by logic-agent-platform)
+login.teamhitori.com              → Auth, onboarding, pending screens (this repo)
+{username}.teamhitori.com         → Portal shell + Agent Zero iframe (this repo)
+{username}.teamhitori.com/api/*   → Control Plane API (this repo)
+{username}.teamhitori.com/agent/* → Agent Zero container (per-user)
+teamhitori.com/pocketsmyth        → Product landing page (Azure SWA, separate repo)
 ```
 
-### Authentication
-
-- **Provider:** Azure AD B2C (`teamhitorib2c.onmicrosoft.com`)
-- **Identity Providers:** Google, GitHub, Microsoft
-- **Auth Proxy:** OAuth2-Proxy sits in front of both Portal and user subdomains (managed in `logic-agent-platform`)
-- **JWT:** OAuth2-Proxy passes `X-Auth-Request-Access-Token` header to this app
-
-### User Lifecycle
-
-```
-sign-up → pending → [admin approves] → approved → [onboarding wizard] → active
-```
-
-Status is stored in Azure AD B2C custom attributes, managed via Microsoft Graph API.
+## Credentials
 
 ### B2C Custom Attributes
 
 ```
 Extension prefix: extension_3575970a911e4699ad1ccc1a507d2312_
-Attributes: Status, Role, Username, ContainerPort
+Attributes: Status (pending|approved|active|revoked), Role (user|admin), Username, ContainerPort
 ```
 
-- **Status:** `pending` | `approved` | `active` | `revoked`
-- **Role:** `user` | `admin`
-- **Username:** URL-safe slug (e.g., `reuben`)
-- **ContainerPort:** internal port for user's Docker stack (e.g., `8001`)
-
-### B2C Graph API Credentials
+### B2C Graph API
 
 ```
-Tenant ID: 359dc45f-49b6-4472-92f1-092556a84a98
-Graph Client ID: 6c50fb10-e1d2-4ca7-be00-6cb29b7f474b
-Secret: stored in .env as B2C_GRAPH_CLIENT_SECRET
+Tenant ID:        359dc45f-49b6-4472-92f1-092556a84a98
+Graph Client ID:  6c50fb10-e1d2-4ca7-be00-6cb29b7f474b
+Secret:           .env → B2C_GRAPH_CLIENT_SECRET
 ```
 
-## Key Design Documents
+### Infrastructure
 
-The full API spec and UI mockups live in the platform-wide docs:
+```
+VM:  Hetzner CPX31, IP 178.156.214.79
+DNS: Azure DNS, wildcard *.teamhitori.com → VM
+```
 
-- **[portal-spec.md](https://github.com/teamhitori/logic-agent-platform/blob/main/docs/portal-spec.md)** — Complete API endpoints, UI wireframes, data models
-- **[architecture.md](https://github.com/teamhitori/logic-agent-platform/blob/main/docs/architecture.md)** — System architecture, request flows, security model
-- **[roadmap.md](https://github.com/teamhitori/logic-agent-platform/blob/main/docs/roadmap.md)** — Phased plan (this repo covers Phases 3, 4, 6)
+## Key Documents
 
-## Portal UI Pages
-
-| Page | Route | Who Sees It |
-|------|-------|-------------|
-| Pending screen | `/` | Users with `status=pending` |
-| Onboarding wizard | `/onboarding` | Users with `status=approved` and no username |
-| User dashboard | `/` | Active users |
-| Admin dashboard | `/admin` | Users with `role=admin` |
-| Admin: Pending users | `/admin/pending` | Admins |
-| Admin: User detail | `/admin/users/:id` | Admins |
-
-## Control Plane API Endpoints
-
-| Endpoint | Method | Access | Description |
-|----------|--------|--------|-------------|
-| `/api/me` | GET | User | Current user info (from B2C via Graph) |
-| `/api/me/agent` | GET | User | Agent container status |
-| `/api/me/agent/restart` | POST | User | Restart own agent |
-| `/api/me/settings` | PUT | User | Update settings (e.g., public URLs) |
-| `/api/users` | GET | Admin | List all users |
-| `/api/users/:id/approve` | POST | Admin | Approve pending user |
-| `/api/users/:id/reject` | POST | Admin | Reject user |
-| `/api/users/:id/revoke` | POST | Admin | Revoke access |
-| `/api/users/:id` | DELETE | Admin | Delete user + purge data |
-| `/api/system/status` | GET | Admin | System resource overview |
-| `/api/system/config` | GET/PUT | Admin | System configuration |
+| Document | Contents |
+|----------|----------|
+| `docs/ARCHITECTURE.md` | URL structure, auth flow, Traefik routing, portal layout, API endpoints, container management, provisioning, security model, all architectural decisions (AD-1–AD-9) |
+| [portal-spec.md](https://github.com/teamhitori/logic-agent-platform/blob/main/docs/portal-spec.md) | Full API spec, UI wireframes, data models |
+| [architecture.md](https://github.com/teamhitori/logic-agent-platform/blob/main/docs/architecture.md) | Platform-wide system architecture |
+| [roadmap.md](https://github.com/teamhitori/logic-agent-platform/blob/main/docs/roadmap.md) | Phased plan (this repo = Phases 3, 4, 6) |
 
 ## Related Repos
 
-- **[logic-agent-platform](https://github.com/teamhitori/logic-agent-platform)** — Infrastructure, platform-wide docs, deployment scripts, Docker Compose templates
-- **[team-hitori-landing](https://github.com/teamhitori/team-hitori-landing)** — Static landing page at `teamhitori.com`
-- **[agent-zero](https://github.com/teamhitori/agent-zero)** — Agent Zero AI framework (fork)
+| Repository | Purpose |
+|---|---|
+| [logic-agent-platform](https://github.com/teamhitori/logic-agent-platform) | Infrastructure, IaC, Traefik, Docker Compose templates |
+| [team-hitori-landing](https://github.com/teamhitori/team-hitori-landing) | Landing page at `teamhitori.com` |
+| [agent-zero](https://github.com/teamhitori/agent-zero) | Agent Zero AI framework (fork — modified for `/agent/` path prefix) |
 
-## How to Resume Work
+## How to Resume
 
-```
-Read docs/AGENT_HANDOFF.md for project context.
-This is the Pocket Smyth Portal — Portal UI, Control Plane API, and provisioning workers.
-See logic-agent-platform/docs/portal-spec.md for the full API spec and UI wireframes.
-See logic-agent-platform/docs/architecture.md for system architecture.
-```
+1. Read this file for project context and credentials
+2. Read `docs/ARCHITECTURE.md` for all architectural decisions and technical details
+3. Read `logic-agent-platform/docs/portal-spec.md` for the full API spec
+4. Next steps: scaffold `portal/`, `api/`, `functions/`, and `shared/` directories

@@ -6,15 +6,17 @@ Portal UI, Control Plane API, and provisioning workers for the **Pocket Smyth** 
 
 This repo contains the user-facing application layer of Pocket Smyth:
 
-- **Portal UI** — User dashboard, admin panel, onboarding wizard (`app.teamhitori.com`)
-- **Control Plane API** — REST API for user/agent/stack management (`app.teamhitori.com/api`)
+- **Portal UI** — User dashboard, admin panel, onboarding wizard
+- **Control Plane API** — REST API for user/agent/stack management
 - **Provisioning Functions** — Azure Functions for async user stack provisioning
 
 ## URLs
 
 ```
-app.teamhitori.com         → Portal UI (login, dashboard, admin)
-app.teamhitori.com/api     → Control Plane API
+login.teamhitori.com                → Auth, onboarding, pending screens
+{username}.teamhitori.com           → Portal shell + Agent Zero iframe
+{username}.teamhitori.com/api/*     → Control Plane API
+{username}.teamhitori.com/agent/*   → Agent Zero (proxied to user container)
 ```
 
 ## Tech Stack
@@ -75,6 +77,7 @@ pocket-smyth-portal/
 | `/api/system/status` | GET | Admin | System overview |
 
 See [logic-agent-platform/docs/portal-spec.md](https://github.com/teamhitori/logic-agent-platform/blob/main/docs/portal-spec.md) for the full API specification.
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for all architectural decisions and technical details.
 
 ### Provisioning Functions (`functions/`)
 
