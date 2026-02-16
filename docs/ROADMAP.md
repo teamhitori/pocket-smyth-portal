@@ -16,23 +16,23 @@ Both environments run the same stack. DEV uses `*.dev.teamhitori.com` wildcard, 
 
 ---
 
-## Phase 1: Project Scaffolding & Dev Environment
+## Phase 1: Project Scaffolding & Dev Environment ✅ COMPLETE
 
 *Set up the repo structure, tooling, and local dev workflow.*
 
 | Task | Description | Status |
 |------|-------------|--------|
-| 1.1 | Scaffold `portal/` — Next.js 14, TypeScript, Tailwind CSS, App Router | ⬜ |
-| 1.2 | Scaffold `api/` — FastAPI project structure, requirements.txt, Dockerfile | ⬜ |
-| 1.3 | Scaffold `functions/` — Azure Functions project (Python v2 model) | ⬜ |
-| 1.4 | Scaffold `shared/` — shared types/constants (TypeScript + Python) | ⬜ |
-| 1.5 | Create `docker-compose.yml` for local dev (Portal + API + mock OAuth2-Proxy) | ⬜ |
-| 1.6 | Configure ESLint, Prettier, ruff (Python linting) | ⬜ |
-| 1.7 | Add `.env.example` with required environment variables | ⬜ |
-| 1.8 | Set up local dev auth bypass (mock JWT header injection) | ⬜ |
-| 1.9 | Verify local stack: Portal + API running, hot reload working | ⬜ |
+| 1.1 | Scaffold `portal/` — Next.js 14, TypeScript, Tailwind CSS, App Router | ✅ |
+| 1.2 | Scaffold `api/` — FastAPI project structure, requirements.txt, Dockerfile | ✅ |
+| 1.3 | Scaffold `functions/` — Azure Functions project (Python v2 model) | ✅ |
+| 1.4 | Scaffold `shared/` — shared types/constants (TypeScript + Python) | ✅ |
+| 1.5 | Create `docker-compose.yml` for local dev (Portal + API + mock OAuth2-Proxy) | ✅ |
+| 1.6 | Configure ESLint, Prettier, ruff (Python linting) | ✅ |
+| 1.7 | Add `.env.example` with required environment variables | ✅ |
+| 1.8 | Set up local dev auth bypass (mock JWT header injection) | ✅ |
+| 1.9 | Verify local stack: Portal + API running, hot reload working | ✅ |
 
-**Deliverable:** Working local dev environment with all projects scaffolded.
+**Deliverable:** Working local dev environment with all projects scaffolded. ✅
 
 ---
 
