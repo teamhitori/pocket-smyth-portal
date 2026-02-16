@@ -21,7 +21,7 @@ No Python. No Azure Functions. No separate API service.
 | Portal scaffolded | ⬜ Pending restructure (exists from old Phase 1, needs Python removal + API routes) |
 | Admin Agent scaffolded | ⬜ Not started |
 | docker-compose.yml | ⬜ Pending restructure (needs OAuth2-Proxy, remove api service) |
-| Old code to remove | ⬜ `api/`, `functions/`, `shared/python/`, `ruff.toml`, `mock-auth/` |
+| Old code to remove | ✅ Removed — `api/`, `functions/`, `shared/python/`, `ruff.toml`, `mock-auth/` deleted |
 
 ## Key Architectural Decisions
 

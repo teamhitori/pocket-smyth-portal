@@ -1,5 +1,5 @@
 services:
-  # ── Portal UI (Next.js) ──────────────────────────────────────
+  # ── Portal (Next.js 14 — UI + API Routes) ────────────────────
   portal:
     build:
       context: ./portal
@@ -11,39 +11,9 @@ services:
       - ./portal/public:/app/public
       - ./shared/ts:/app/shared
     environment:
-      - NEXT_PUBLIC_API_URL=http://localhost:8000
       - NEXT_PUBLIC_ENV=development
-    depends_on:
-      - api
-
-  # ── Control Plane API (FastAPI) ──────────────────────────────
-  api:
-    build:
-      context: ./api
-      dockerfile: Dockerfile
-    ports:
-      - "8000:8000"
-    volumes:
-      - ./api/app:/app/app
-      - ./shared/python:/app/shared
-    environment:
-      - ENVIRONMENT=development
       - B2C_TENANT_ID=${B2C_TENANT_ID:-}
       - B2C_GRAPH_CLIENT_ID=${B2C_GRAPH_CLIENT_ID:-}
       - B2C_GRAPH_CLIENT_SECRET=${B2C_GRAPH_CLIENT_SECRET:-}
       - ADMIN_AGENT_URL=http://admin-agent:8080
       - ADMIN_AGENT_SECRET=${ADMIN_AGENT_SECRET:-dev-secret}
-      - PYTHONPATH=/app:/app/shared
-
-  # ── Mock Auth (local dev only) ───────────────────────────────
-  # Injects a fake JWT header to simulate OAuth2-Proxy.
-  # In production, OAuth2-Proxy handles this.
-  mock-auth:
-    image: nginx:alpine
-    ports:
-      - "8888:80"
-    volumes:
-      - ./mock-auth/nginx.conf:/etc/nginx/nginx.conf:ro
-    depends_on:
-      - portal
-      - api

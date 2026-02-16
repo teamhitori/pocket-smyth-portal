@@ -23,15 +23,15 @@ For infrastructure provisioning (VM, Traefik, DNS, TLS), see [logic-agent-platfo
 
 | Task | Description | Who | Status |
 |------|-------------|-----|--------|
-| 1A.1 | Delete `api/` directory (old FastAPI project) | Agent | ⬜ |
-| 1A.2 | Delete `functions/` directory (old Azure Functions project) | Agent | ⬜ |
-| 1A.3 | Delete `shared/python/` directory | Agent | ⬜ |
-| 1A.4 | Delete `mock-auth/` directory (replaced by real OAuth2-Proxy) | Agent | ⬜ |
-| 1A.5 | Delete `ruff.toml` (Python linter config) | Agent | ⬜ |
-| 1A.6 | Remove Python-specific env vars from `.env.example` (keep B2C vars) | Agent | ⬜ |
-| 1A.7 | Remove `api` service from `docker-compose.yml` | Agent | ⬜ |
-| 1A.8 | Remove `mock-auth` service from `docker-compose.yml` | Agent | ⬜ |
-| 1A.9 | Verify no remaining Python references in repo (`grep -r "python\|fastapi\|uvicorn\|ruff" --include="*.yml" --include="*.json" --include="*.ts"`) | Agent | ⬜ |
+| 1A.1 | Delete `api/` directory (old FastAPI project) | Agent | ✅ |
+| 1A.2 | Delete `functions/` directory (old Azure Functions project) | Agent | ✅ |
+| 1A.3 | Delete `shared/python/` directory | Agent | ✅ |
+| 1A.4 | Delete `mock-auth/` directory (replaced by real OAuth2-Proxy) | Agent | ✅ |
+| 1A.5 | Delete `ruff.toml` (Python linter config) | Agent | ✅ |
+| 1A.6 | Remove Python-specific env vars from `.env.example` (keep B2C vars) | Agent | ✅ |
+| 1A.7 | Remove `api` service from `docker-compose.yml` | Agent | ✅ |
+| 1A.8 | Remove `mock-auth` service from `docker-compose.yml` | Agent | ✅ |
+| 1A.9 | Verify no remaining Python references in repo (`grep -r "python\|fastapi\|uvicorn\|ruff" --include="*.yml" --include="*.json" --include="*.ts"`) | Agent | ✅ |
 
 > **⏸ CHECKPOINT 1A:** Review the cleanup diff (`git diff`). Confirm all Python code removed, no accidental deletions. Commit: `chore: remove Python code (FastAPI, Functions, mock-auth)`.
 
