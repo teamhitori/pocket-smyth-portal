@@ -4,32 +4,58 @@ Context document for AI agents continuing work on this repo.
 
 ## Project Summary
 
-**Pocket Smyth Portal** is the user-facing application layer for the Pocket Smyth multi-tenant AI agent platform:
+**Pocket Smyth Portal** is the user-facing application layer for a multi-tenant AI agent platform. Two TypeScript deployables:
 
-- **Portal UI** (`portal/`) — Next.js 14, serves `login.teamhitori.com` and `{username}.teamhitori.com`
-- **Control Plane API** (`api/`) — FastAPI at `{username}.teamhitori.com/api/*`
-- **Provisioning Functions** (`functions/`) — Azure Functions triggered by Azure Queue Storage
+- **Portal** (`portal/`) — Next.js 14, serves `login.teamhitori.com` and `{username}.teamhitori.com`. Contains both UI and API Routes.
+- **Admin Agent** (`admin-agent/`) — Hono, Docker management sidecar via dockerode. Runs on `portal-net` only.
+
+No Python. No Azure Functions. No separate API service.
 
 ## Current State
 
 | Component | Status |
 |-----------|--------|
-| Architecture decisions (AD-1–AD-9) | ✅ Finalized |
+| Architecture decisions (AD-1–AD-13) | ✅ Finalized |
 | Architecture document | ✅ `docs/ARCHITECTURE.md` |
-| Portal UI scaffolded | ⬜ Not started |
-| Control Plane API scaffolded | ⬜ Not started |
-| Azure Functions scaffolded | ⬜ Not started |
-| docker-compose.yml for local dev | ⬜ Not started |
+| Roadmap | ✅ `docs/ROADMAP.md` (6 phases) |
+| Portal scaffolded | ⬜ Pending restructure (exists from old Phase 1, needs Python removal + API routes) |
+| Admin Agent scaffolded | ⬜ Not started |
+| docker-compose.yml | ⬜ Pending restructure (needs OAuth2-Proxy, remove api service) |
+| Old code to remove | ⬜ `api/`, `functions/`, `shared/python/`, `ruff.toml`, `mock-auth/` |
+
+## Key Architectural Decisions
+
+| # | Decision |
+|---|---|
+| AD-1 | Hybrid SSR + client polling (10s) |
+| AD-2 | Launch button → new tab (not iframe) |
+| AD-3 | Admin Agent: Hono + dockerode sidecar |
+| AD-4 | Soft delete only |
+| AD-5 | Immutable agent image + mutable user volumes |
+| AD-10 | TypeScript only — no Python |
+| AD-11 | API Routes inside Next.js (no separate API service) |
+| AD-12 | Synchronous provisioning (API → Admin Agent HTTP) |
+| AD-13 | No database for MVP (B2C + Docker state) |
 
 ## Quick Reference
 
 ```
-login.teamhitori.com              → Auth, onboarding, pending screens (this repo)
-{username}.teamhitori.com         → Portal shell + Agent Zero iframe (this repo)
-{username}.teamhitori.com/api/*   → Control Plane API (this repo)
-{username}.teamhitori.com/agent/* → Agent Zero container (per-user)
-teamhitori.com/pocketsmyth        → Product landing page (Azure SWA, separate repo)
+login.teamhitori.com              → Auth, onboarding, pending screens
+{username}.teamhitori.com         → Portal dashboard
+{username}.teamhitori.com/agent/* → Agent Zero (new tab, proxied to user container)
+{username}.teamhitori.com/api/*   → Next.js API Routes
+{username}.teamhitori.com/admin/* → Admin panel (admin only)
 ```
+
+## Local Dev
+
+Real OAuth2-Proxy + dev B2C app registration. No mock auth.
+
+```
+localhost:4180 → OAuth2-Proxy → localhost:3000 (Portal)
+```
+
+No subdomain routing locally. Subdomain routing tested on DEV (`*.dev.teamhitori.com`).
 
 ## Credentials
 
@@ -59,10 +85,10 @@ DNS: Azure DNS, wildcard *.teamhitori.com → VM
 
 | Document | Contents |
 |----------|----------|
-| `docs/ARCHITECTURE.md` | URL structure, auth flow, Traefik routing, portal layout, API endpoints, container management, provisioning, security model, all architectural decisions (AD-1–AD-9) |
+| `docs/ARCHITECTURE.md` | URL structure, auth flow, local dev auth, Traefik routing, portal layout, API routes, Admin Agent, provisioning, security model, all ADs |
+| `docs/ROADMAP.md` | 6-phase rollout plan |
 | [portal-spec.md](https://github.com/teamhitori/logic-agent-platform/blob/main/docs/portal-spec.md) | Full API spec, UI wireframes, data models |
 | [architecture.md](https://github.com/teamhitori/logic-agent-platform/blob/main/docs/architecture.md) | Platform-wide system architecture |
-| [roadmap.md](https://github.com/teamhitori/logic-agent-platform/blob/main/docs/roadmap.md) | Phased plan (this repo = Phases 3, 4, 6) |
 
 ## Related Repos
 
@@ -75,6 +101,6 @@ DNS: Azure DNS, wildcard *.teamhitori.com → VM
 ## How to Resume
 
 1. Read this file for project context and credentials
-2. Read `docs/ARCHITECTURE.md` for all architectural decisions and technical details
-3. Read `logic-agent-platform/docs/portal-spec.md` for the full API spec
-4. Next steps: scaffold `portal/`, `api/`, `functions/`, and `shared/` directories
+2. Read `docs/ARCHITECTURE.md` for all architectural decisions
+3. Read `docs/ROADMAP.md` for current phase and next tasks
+4. Next code tasks: delete old Python code (`api/`, `functions/`, `shared/python/`, `ruff.toml`, `mock-auth/`), scaffold `admin-agent/`, add Next.js API route stubs, update `docker-compose.yml` with OAuth2-Proxy
