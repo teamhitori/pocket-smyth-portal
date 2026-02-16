@@ -39,11 +39,11 @@ For infrastructure provisioning (VM, Traefik, DNS, TLS), see [logic-agent-platfo
 
 | Task | Description | Who | Status |
 |------|-------------|-----|--------|
-| 1B.1 | Restructure `portal/` — ensure Next.js 14, TypeScript, Tailwind CSS, App Router. Add `src/app/api/` stub dirs for API routes | Agent | ⬜ |
-| 1B.2 | Scaffold `admin-agent/` — Hono project with TypeScript, dockerode dependency | Agent | ⬜ |
-| 1B.3 | Update `shared/ts/` — add `dev` and `login` to `RESERVED_USERNAMES`, remove any Python cross-refs | Agent | ⬜ |
-| 1B.4 | Configure ESLint, Prettier (repo-wide, TS-only) | Agent | ⬜ |
-| 1B.5 | Update `.env.example` — add OAuth2-Proxy vars (`OAUTH2_PROXY_CLIENT_ID`, `OAUTH2_PROXY_CLIENT_SECRET`, `OAUTH2_PROXY_COOKIE_SECRET`, `B2C_OIDC_ISSUER_URL`) | Agent | ⬜ |
+| 1B.1 | Restructure `portal/` — ensure Next.js 14, TypeScript, Tailwind CSS, App Router. Add `src/app/api/` stub dirs for API routes | Agent | ✅ |
+| 1B.2 | Scaffold `admin-agent/` — Hono project with TypeScript, dockerode dependency | Agent | ✅ |
+| 1B.3 | Update `shared/ts/` — add `dev` and `login` to `RESERVED_USERNAMES`, remove any Python cross-refs | Agent | ✅ |
+| 1B.4 | Configure ESLint, Prettier (repo-wide, TS-only) | Agent | ✅ |
+| 1B.5 | Update `.env.example` — add OAuth2-Proxy vars (`OAUTH2_PROXY_CLIENT_ID`, `OAUTH2_PROXY_CLIENT_SECRET`, `OAUTH2_PROXY_COOKIE_SECRET`, `B2C_OIDC_ISSUER_URL`) | Agent | ✅ |
 
 > **⏸ CHECKPOINT 1B:** Verify project structure: `portal/`, `admin-agent/`, `shared/ts/`. Run `npm install` in portal and admin-agent, confirm no errors. Commit: `feat: scaffold TypeScript projects (portal, admin-agent, shared)`.
 
