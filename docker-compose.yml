@@ -1,4 +1,30 @@
 services:
+  # ── OAuth2-Proxy (auth entry point) ──────────────────────────
+  # All browser traffic enters here at localhost:4180.
+  # Authenticates via B2C, then proxies to Portal with JWT header.
+  oauth2-proxy:
+    image: quay.io/oauth2-proxy/oauth2-proxy:v7.7.1
+    ports:
+      - "4180:4180"
+    environment:
+      - OAUTH2_PROXY_PROVIDER=oidc
+      - OAUTH2_PROXY_OIDC_ISSUER_URL=${B2C_OIDC_ISSUER_URL}
+      - OAUTH2_PROXY_CLIENT_ID=${OAUTH2_PROXY_CLIENT_ID}
+      - OAUTH2_PROXY_CLIENT_SECRET=${OAUTH2_PROXY_CLIENT_SECRET}
+      - OAUTH2_PROXY_COOKIE_SECRET=${OAUTH2_PROXY_COOKIE_SECRET}
+      - OAUTH2_PROXY_COOKIE_SECURE=false
+      - OAUTH2_PROXY_HTTP_ADDRESS=0.0.0.0:4180
+      - OAUTH2_PROXY_UPSTREAMS=http://portal:3000
+      - OAUTH2_PROXY_EMAIL_DOMAINS=*
+      - OAUTH2_PROXY_PASS_ACCESS_TOKEN=true
+      - OAUTH2_PROXY_SET_XAUTHREQUEST=true
+      - OAUTH2_PROXY_REDIRECT_URL=http://localhost:4180/oauth2/callback
+      - OAUTH2_PROXY_SKIP_PROVIDER_BUTTON=true
+    depends_on:
+      - portal
+    networks:
+      - portal-net
+
   # ── Portal (Next.js 14 — UI + API Routes) ────────────────────
   portal:
     build:
@@ -17,3 +43,24 @@ services:
       - B2C_GRAPH_CLIENT_SECRET=${B2C_GRAPH_CLIENT_SECRET:-}
       - ADMIN_AGENT_URL=http://admin-agent:8080
       - ADMIN_AGENT_SECRET=${ADMIN_AGENT_SECRET:-dev-secret}
+    networks:
+      - portal-net
+
+  # ── Admin Agent (Hono + dockerode) ───────────────────────────
+  # Internal only — not exposed to host. Portal calls via portal-net.
+  admin-agent:
+    build:
+      context: ./admin-agent
+      dockerfile: Dockerfile
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./admin-agent/src:/app/src
+    environment:
+      - ADMIN_AGENT_SECRET=${ADMIN_AGENT_SECRET:-dev-secret}
+      - PORT=8080
+    networks:
+      - portal-net
+
+networks:
+  portal-net:
+    driver: bridge

@@ -51,15 +51,15 @@ For infrastructure provisioning (VM, Traefik, DNS, TLS), see [logic-agent-platfo
 
 | Task | Description | Who | Status |
 |------|-------------|-----|--------|
-| 1C.1 | **MANUAL:** Log into Azure Portal → B2C tenant (`359dc45f-...`) | You | ⬜ |
-| 1C.2 | **MANUAL:** Create new App Registration named `pocket-smyth-portal-dev` | You | ⬜ |
+| 1C.1 | **MANUAL:** Log into Azure Portal → B2C tenant (`359dc45f-...`) | You | ✅ |
+| 1C.2 | **MANUAL:** Create new App Registration named `pocket-smyth-portal-dev` | You | ✅ |
 |      | - Platform: Web | | |
 |      | - Redirect URI: `http://localhost:4180/oauth2/callback` | | |
 |      | - Supported account types: Accounts in this organizational directory only | | |
-| 1C.3 | **MANUAL:** Generate a client secret, note the value | You | ⬜ |
-| 1C.4 | **MANUAL:** Grant API permissions: `openid`, `offline_access`, plus any custom scopes for Graph API access | You | ⬜ |
-| 1C.5 | **MANUAL:** Verify the B2C user flow / custom policy returns custom attributes (`Status`, `Role`, `Username`, `ContainerPort`) in the ID or access token | You | ⬜ |
-| 1C.6 | **MANUAL:** Populate `.env` with actual values: | You | ⬜ |
+| 1C.3 | **MANUAL:** Generate a client secret, note the value | You | ✅ |
+| 1C.4 | **MANUAL:** Grant API permissions: `openid`, `offline_access` (Graph API access uses a separate existing app registration with client credentials — no additional scopes needed here) | You | ✅ |
+| 1C.5 | **MANUAL:** Verify the B2C user flow / custom policy returns custom attributes (`Status`, `Role`, `Username`, `ContainerPort`) in the ID or access token | You | ✅ |
+| 1C.6 | **MANUAL:** Populate `.env` with actual values: | You | ✅ |
 |      | ```env | | |
 |      | OAUTH2_PROXY_CLIENT_ID=<from 1C.2> | | |
 |      | OAUTH2_PROXY_CLIENT_SECRET=<from 1C.3> | | |
@@ -76,11 +76,11 @@ For infrastructure provisioning (VM, Traefik, DNS, TLS), see [logic-agent-platfo
 
 | Task | Description | Who | Status |
 |------|-------------|-----|--------|
-| 1D.1 | Rewrite `docker-compose.yml` — Portal + OAuth2-Proxy + Admin Agent services | Agent | ⬜ |
-|      | - `oauth2-proxy` service: `quay.io/oauth2-proxy/oauth2-proxy:latest`, port 4180, configured via env vars | | |
+| 1D.1 | Rewrite `docker-compose.yml` — Portal + OAuth2-Proxy + Admin Agent services | Agent | ✅ |
+|      | - `oauth2-proxy` service: `quay.io/oauth2-proxy/oauth2-proxy:v7.7.1`, port 4180, configured via env vars | | |
 |      | - `portal` service: Next.js on port 3000, proxied through oauth2-proxy | | |
 |      | - `admin-agent` service: Hono on port 8080, internal `portal-net` only | | |
-| 1D.2 | Verify `docker compose build` succeeds for all services | Agent | ⬜ |
+| 1D.2 | Verify `docker compose build` succeeds for all services | Agent | ✅ |
 
 > **⏸ CHECKPOINT 1D:** Run `docker compose up`. Confirm:
 > 1. All 3 containers start without errors
