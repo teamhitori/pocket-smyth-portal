@@ -69,6 +69,13 @@ For infrastructure provisioning (VM, Traefik, DNS, TLS), see [logic-agent-platfo
 |      | B2C_GRAPH_CLIENT_ID=6c50fb10-e1d2-4ca7-be00-6cb29b7f474b | | |
 |      | B2C_GRAPH_CLIENT_SECRET=<your secret> | | |
 |      | ``` | | |
+| 1C.7 | **MANUAL:** Expose an API on the app registration — required for B2C to issue access tokens: | You | ✅ |
+|      | 1. **Expose an API** → Set Application ID URI (accept default) | | |
+|      | 2. **Add a scope**: name `access_as_user`, state Enabled | | |
+|      | 3. **API permissions** → **Add a permission** → **My APIs** → select app → check `access_as_user` | | |
+|      | 4. **Grant admin consent** | | |
+|      | 5. Add to `.env`: `B2C_API_SCOPE=https://<tenant>.onmicrosoft.com/<client-id>/access_as_user` | | |
+|      | 6. Add to `.env`: `B2C_TOKEN_ENDPOINT_PATH=/<tenant-id>/<policy>/oauth2/v2.0/token` | | |
 
 > **⏸ CHECKPOINT 1C:** Confirm `.env` is populated. Run `cat .env | grep OAUTH2_PROXY_CLIENT_ID` to verify it's not empty. Do NOT commit `.env` to git.
 
@@ -76,16 +83,23 @@ For infrastructure provisioning (VM, Traefik, DNS, TLS), see [logic-agent-platfo
 
 | Task | Description | Who | Status |
 |------|-------------|-----|--------|
-| 1D.1 | Rewrite `docker-compose.yml` — Portal + OAuth2-Proxy + Admin Agent services | Agent | ✅ |
+| 1D.1 | Rewrite `docker-compose.yml` — Portal + OAuth2-Proxy + Admin Agent + Token Proxy services | Agent | ✅ |
 |      | - `oauth2-proxy` service: `quay.io/oauth2-proxy/oauth2-proxy:v7.7.1`, port 4180, configured via env vars | | |
 |      | - `portal` service: Next.js on port 3000, proxied through oauth2-proxy | | |
 |      | - `admin-agent` service: Hono on port 8080, internal `portal-net` only | | |
-| 1D.2 | Verify `docker compose build` succeeds for all services | Agent | ✅ |
+|      | - `token-proxy` service: Node.js sidecar that adds `scope` to B2C token exchange requests (workaround for Go oauth2 library not sending scope — B2C requires it to issue access tokens) | | |
+| 1D.2 | Configure B2C-specific OAuth2-Proxy settings: | Agent | ✅ |
+|      | - `OAUTH2_PROXY_SCOPE` includes the exposed API scope (`B2C_API_SCOPE`) | | |
+|      | - `OAUTH2_PROXY_REDEEM_URL` routes token exchange through token-proxy | | |
+|      | - `OAUTH2_PROXY_OIDC_EMAIL_CLAIM=emails` (B2C uses `emails` array, not `email` string) | | |
+|      | - `OAUTH2_PROXY_INSECURE_OIDC_ALLOW_UNVERIFIED_EMAIL=true` (B2C omits `email_verified` claim) | | |
+| 1D.3 | Verify `docker compose build` succeeds for all services | Agent | ✅ |
 
 > **⏸ CHECKPOINT 1D:** Run `docker compose up`. Confirm:
-> 1. All 3 containers start without errors
+> 1. All 4 containers start without errors (portal, oauth2-proxy, admin-agent, token-proxy)
 > 2. `http://localhost:4180` redirects to B2C login page
-> 3. No mock-auth or FastAPI containers running
+> 3. After B2C login, user is redirected back to Portal (Next.js page loads)
+> 4. No mock-auth or FastAPI containers running
 
 ### 1E — End-to-End Auth Verification (Manual Test)
 

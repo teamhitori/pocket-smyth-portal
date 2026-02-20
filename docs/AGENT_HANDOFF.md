@@ -4,10 +4,11 @@ Context document for AI agents continuing work on this repo.
 
 ## Project Summary
 
-**Pocket Smyth Portal** is the user-facing application layer for a multi-tenant AI agent platform. Two TypeScript deployables:
+**Pocket Smyth Portal** is the user-facing application layer for a multi-tenant AI agent platform. Two TypeScript deployables plus a lightweight sidecar:
 
 - **Portal** (`portal/`) — Next.js 14, serves `login.teamhitori.com` and `{username}.teamhitori.com`. Contains both UI and API Routes.
 - **Admin Agent** (`admin-agent/`) — Hono, Docker management sidecar via dockerode. Runs on `portal-net` only.
+- **Token Proxy** (`token-proxy/`) — Node.js sidecar that fixes B2C token exchange (adds `scope` parameter that the Go oauth2 library omits).
 
 No Python. No Azure Functions. No separate API service.
 
@@ -18,10 +19,13 @@ No Python. No Azure Functions. No separate API service.
 | Architecture decisions (AD-1–AD-13) | ✅ Finalized |
 | Architecture document | ✅ `docs/ARCHITECTURE.md` |
 | Roadmap | ✅ `docs/ROADMAP.md` (6 phases) |
-| Portal scaffolded | ⬜ Pending restructure (exists from old Phase 1, needs Python removal + API routes) |
-| Admin Agent scaffolded | ⬜ Not started |
-| docker-compose.yml | ⬜ Pending restructure (needs OAuth2-Proxy, remove api service) |
-| Old code to remove | ✅ Removed — `api/`, `functions/`, `shared/python/`, `ruff.toml`, `mock-auth/` deleted |
+| Old code removed | ✅ `api/`, `functions/`, `shared/python/`, `ruff.toml`, `mock-auth/` deleted |
+| Portal scaffolded | ✅ Next.js 14 with API route stubs |
+| Admin Agent scaffolded | ✅ Hono project with dockerode |
+| Token Proxy | ✅ B2C token exchange workaround (`token-proxy/proxy.js`) |
+| docker-compose.yml | ✅ 4 services: oauth2-proxy, portal, admin-agent, token-proxy |
+| B2C dev app registration | ✅ With exposed API scope `access_as_user` |
+| Local dev auth (Checkpoint 1D) | ✅ B2C login → Portal loads successfully |
 
 ## Key Architectural Decisions
 
@@ -53,9 +57,19 @@ Real OAuth2-Proxy + dev B2C app registration. No mock auth.
 
 ```
 localhost:4180 → OAuth2-Proxy → localhost:3000 (Portal)
+                     │
+                     └─ token exchange → Token Proxy (:8888) → B2C
 ```
 
+Four containers: `oauth2-proxy`, `portal`, `admin-agent`, `token-proxy`.
 No subdomain routing locally. Subdomain routing tested on DEV (`*.dev.teamhitori.com`).
+
+### B2C Workarounds
+
+- **Token Proxy** — B2C requires `scope` in the token exchange POST body but the Go oauth2 library doesn't send it. Token Proxy intercepts, appends scope, forwards to B2C.
+- **Email claim** — B2C uses `emails` (array) not `email` (string). Set via `OAUTH2_PROXY_OIDC_EMAIL_CLAIM=emails`.
+- **Email verified** — B2C omits `email_verified` claim. Set via `OAUTH2_PROXY_INSECURE_OIDC_ALLOW_UNVERIFIED_EMAIL=true`.
+- **API scope** — B2C only issues an `access_token` when an API scope is requested. App registration must have **Expose an API** configured with scope `access_as_user`.
 
 ## Credentials
 
@@ -103,4 +117,5 @@ DNS: Azure DNS, wildcard *.teamhitori.com → VM
 1. Read this file for project context and credentials
 2. Read `docs/ARCHITECTURE.md` for all architectural decisions
 3. Read `docs/ROADMAP.md` for current phase and next tasks
-4. Next code tasks: delete old Python code (`api/`, `functions/`, `shared/python/`, `ruff.toml`, `mock-auth/`), scaffold `admin-agent/`, add Next.js API route stubs, update `docker-compose.yml` with OAuth2-Proxy
+4. **Current state:** Phase 1 Checkpoint 1D is complete. Next: Checkpoint 1E (manual E2E auth verification), then Phase 2 (Portal UI MVP)
+5. Run `docker compose up` to start all 4 services. Open `http://localhost:4180` to test.

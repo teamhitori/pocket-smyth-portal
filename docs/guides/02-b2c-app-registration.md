@@ -161,6 +161,33 @@ You can have multiple redirect URIs (localhost for dev, production domain for pr
 
 > **Note:** You do NOT need to add Microsoft Graph permissions here. Graph API access uses a separate app registration with Client Credentials flow.
 
+### Step 7 — Expose an API (Required for Access Tokens)
+
+Azure AD B2C only issues an `access_token` in the token response when the client requests an **API scope**. Without this, B2C returns only an `id_token`, which causes OAuth2-Proxy to fail with `server response missing access_token`.
+
+1. Go to **Expose an API** (left menu)
+2. Click **Set** next to Application ID URI → accept the default (`https://teamhitorib2c.onmicrosoft.com/<client-id>`) → **Save**
+3. Click **Add a scope**:
+   - **Scope name:** `access_as_user`
+   - **Admin consent display name:** `Access portal`
+   - **Admin consent description:** `Allow OAuth2-Proxy to obtain an access token`
+   - **State:** Enabled
+   - Click **Add scope**
+4. Go to **API permissions** → **Add a permission** → **My APIs** → select `pocket-smyth-portal-dev` → check `access_as_user` → **Add permissions**
+5. Click **Grant admin consent for teamhitorib2c**
+
+After this step, add to your `.env`:
+
+```bash
+# Full scope URI — used in OAUTH2_PROXY_SCOPE
+B2C_API_SCOPE=https://teamhitorib2c.onmicrosoft.com/<client-id>/access_as_user
+
+# Token endpoint path from OIDC discovery — used by token-proxy redeem URL
+B2C_TOKEN_ENDPOINT_PATH=/<tenant-id>/b2c_1_signupsignin_google/oauth2/v2.0/token
+```
+
+> **Why is this needed?** B2C follows a strict interpretation of OAuth 2.0: access tokens are audience-specific. If no API scope is requested, there is no audience, so no access token is issued. The `openid` and `offline_access` scopes only trigger `id_token` and `refresh_token` issuance.
+
 ---
 
 ## Registration 2: Graph API App
@@ -246,6 +273,10 @@ OAUTH2_PROXY_COOKIE_SECRET=<32-byte random base64 string>
 # B2C OIDC Configuration
 B2C_OIDC_ISSUER_URL=https://teamhitorib2c.b2clogin.com/tfp/359dc45f-49b6-4472-92f1-092556a84a98/b2c_1_signupsignin_google/v2.0/
 
+# B2C API Scope (from Expose an API step)
+B2C_API_SCOPE=https://teamhitorib2c.onmicrosoft.com/<client-id>/access_as_user
+B2C_TOKEN_ENDPOINT_PATH=/359dc45f-49b6-4472-92f1-092556a84a98/b2c_1_signupsignin_google/oauth2/v2.0/token
+
 # Graph API App
 B2C_TENANT_ID=359dc45f-49b6-4472-92f1-092556a84a98
 B2C_GRAPH_CLIENT_ID=6c50fb10-e1d2-4ca7-be00-6cb29b7f474b
@@ -270,6 +301,9 @@ openssl rand -base64 32
 | Missing redirect URI | Error after B2C login: "redirect_uri does not match" | Add exact callback URL in Authentication blade |
 | Case mismatch in redirect URI | Intermittent auth failures | Redirect URIs are case-sensitive — use lowercase |
 | Implicit grant not enabled | "Run user flow" test in portal fails with AADB2C90057 | Enable both Access tokens and ID tokens under Implicit grant |
+| No API exposed (Expose an API) | `server response missing access_token` after B2C callback | Expose an API with scope `access_as_user`, add to API permissions, grant consent |
+| Missing `scope` in token exchange | `server response missing access_token` | Token Proxy sidecar adds scope; ensure `B2C_API_SCOPE` and `B2C_TOKEN_ENDPOINT_PATH` are set in `.env` |
+| B2C `emails` vs `email` claim | `neither the id_token nor the profileURL set an email` | Set `OAUTH2_PROXY_OIDC_EMAIL_CLAIM=emails` in docker-compose |
 | Forgot to click Save | Changes don't take effect | Always click Save after modifying Authentication settings |
 | Copied secret Description instead of Value | Auth fails with "invalid client secret" | Copy the Value column, not Description |
 | Graph permissions not admin-consented | 403 errors when calling Graph API | Click "Grant admin consent for [tenant]" |

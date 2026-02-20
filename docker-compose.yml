@@ -20,8 +20,17 @@ services:
       - OAUTH2_PROXY_SET_XAUTHREQUEST=true
       - OAUTH2_PROXY_REDIRECT_URL=http://localhost:4180/oauth2/callback
       - OAUTH2_PROXY_SKIP_PROVIDER_BUTTON=true
+      # B2C requires scope in the token exchange POST body to issue an access_token.
+      # The Go oauth2 library doesn't send it, so we proxy through token-proxy.
+      - OAUTH2_PROXY_SCOPE=openid offline_access ${B2C_API_SCOPE}
+      - OAUTH2_PROXY_REDEEM_URL=http://token-proxy:8888${B2C_TOKEN_ENDPOINT_PATH}
+      # B2C uses "emails" (array) instead of standard "email" (string) claim.
+      - OAUTH2_PROXY_OIDC_EMAIL_CLAIM=emails
+      # B2C does not return an email_verified claim — allow unverified emails.
+      - OAUTH2_PROXY_INSECURE_OIDC_ALLOW_UNVERIFIED_EMAIL=true
     depends_on:
       - portal
+      - token-proxy
     networks:
       - portal-net
 
@@ -58,6 +67,21 @@ services:
     environment:
       - ADMIN_AGENT_SECRET=${ADMIN_AGENT_SECRET:-dev-secret}
       - PORT=8080
+    networks:
+      - portal-net
+
+  # ── Token Proxy (B2C scope fix) ─────────────────────────────
+  # Works around Go oauth2 library not sending scope in token exchange.
+  # Intercepts token requests, adds scope, forwards to B2C.
+  token-proxy:
+    image: node:20-alpine
+    command: node /app/proxy.js
+    volumes:
+      - ./token-proxy/proxy.js:/app/proxy.js:ro
+    environment:
+      - B2C_API_SCOPE=${B2C_API_SCOPE}
+      - B2C_TOKEN_HOST=${B2C_TOKEN_HOST:-teamhitorib2c.b2clogin.com}
+      - PORT=8888
     networks:
       - portal-net
 

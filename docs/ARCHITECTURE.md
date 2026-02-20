@@ -11,8 +11,9 @@
 |---|---|---|---|
 | **Portal** | Next.js 14 (TypeScript) | `portal/` | UI + API Routes — serves all subdomains |
 | **Admin Agent** | Hono (TypeScript) | `admin-agent/` | Docker management sidecar via dockerode |
+| **Token Proxy** | Node.js (vanilla) | `token-proxy/` | B2C token exchange workaround — adds `scope` to token requests |
 
-Everything is TypeScript. No Python components.
+Everything is TypeScript/JavaScript. No Python components.
 
 ---
 
@@ -98,6 +99,15 @@ Local dev uses a **real OAuth2-Proxy** container pointed at a **dev B2C app regi
 │   4180      │     │                  │     │  app reg)    │
 └─────────────┘     └──────────────────┘     └──────────────┘
                            │
+                           │ Token exchange routed
+                           │ through token-proxy
+                           │ (adds scope param)
+                           │
+                    ┌──────────────────┐
+                    │  Token Proxy      │
+                    │  localhost:8888   │
+                    └──────────────────┘
+                           │
                            │ X-Auth-Request-Access-Token
                            ▼
                     ┌──────────────────┐
@@ -109,8 +119,20 @@ Local dev uses a **real OAuth2-Proxy** container pointed at a **dev B2C app regi
 ### Setup
 
 1. Create a **dev app registration** in the B2C tenant with redirect URI: `http://localhost:4180/oauth2/callback`
-2. Populate `.env` with `OAUTH2_PROXY_CLIENT_ID`, `OAUTH2_PROXY_CLIENT_SECRET`, `OAUTH2_PROXY_COOKIE_SECRET`, and B2C OIDC endpoint
-3. `docker compose up` — starts Portal + OAuth2-Proxy + Admin Agent
+2. **Expose an API** on the app registration: set Application ID URI, add scope `access_as_user`, grant admin consent
+3. Populate `.env` with `OAUTH2_PROXY_CLIENT_ID`, `OAUTH2_PROXY_CLIENT_SECRET`, `OAUTH2_PROXY_COOKIE_SECRET`, `B2C_OIDC_ISSUER_URL`, `B2C_API_SCOPE`, and `B2C_TOKEN_ENDPOINT_PATH`
+4. `docker compose up` — starts Portal + OAuth2-Proxy + Admin Agent + Token Proxy
+
+### B2C Compatibility Notes
+
+Azure AD B2C has several non-standard OIDC behaviors that require workarounds:
+
+| Issue | Symptom | Workaround |
+|-------|---------|------------|
+| B2C requires `scope` in token exchange POST body | `server response missing access_token` | Token Proxy sidecar intercepts token requests and appends `scope` parameter |
+| B2C requires an exposed API scope to issue access tokens | Token response contains only `id_token` | Expose an API with scope `access_as_user` on the app registration |
+| B2C uses `emails` (JSON array) instead of `email` claim | `neither the id_token nor the profileURL set an email` | `OAUTH2_PROXY_OIDC_EMAIL_CLAIM=emails` |
+| B2C omits `email_verified` claim | Email verification fails silently | `OAUTH2_PROXY_INSECURE_OIDC_ALLOW_UNVERIFIED_EMAIL=true` |
 
 ### What's tested locally vs on DEV
 
@@ -460,7 +482,9 @@ Secret:           stored in .env as B2C_GRAPH_CLIENT_SECRET
 A separate app registration for local development with:
 - Redirect URI: `http://localhost:4180/oauth2/callback`
 - Same tenant, same custom attributes, same user pool
+- **Exposed API** with scope `access_as_user` (required for B2C to issue access tokens)
 - Client ID/secret stored in `.env` as `OAUTH2_PROXY_CLIENT_ID` / `OAUTH2_PROXY_CLIENT_SECRET`
+- API scope stored in `.env` as `B2C_API_SCOPE`
 
 ---
 
