@@ -105,14 +105,21 @@ For infrastructure provisioning (VM, Traefik, DNS, TLS), see [logic-agent-platfo
 
 | Task | Description | Who | Status |
 |------|-------------|-----|--------|
-| 1E.1 | **MANUAL TEST:** Open `http://localhost:4180` in browser | You | ⬜ |
-| 1E.2 | **MANUAL TEST:** Confirm redirect to B2C login page | You | ⬜ |
-| 1E.3 | **MANUAL TEST:** Log in with a test B2C account | You | ⬜ |
-| 1E.4 | **MANUAL TEST:** Confirm redirect back to Portal (Next.js page loads) | You | ⬜ |
-| 1E.5 | **MANUAL TEST:** Check browser dev tools → Network → verify `X-Auth-Request-Access-Token` header is present on Portal requests | You | ⬜ |
-| 1E.6 | **MANUAL TEST:** Verify decoded JWT contains custom attributes (`extension_..._Status`, `extension_..._Role`, etc.) — use browser console or Portal debug output | You | ⬜ |
+| 1E.1 | **MANUAL TEST:** Open `http://localhost:4180` in browser | You | ✅ |
+| 1E.2 | **MANUAL TEST:** Confirm redirect to B2C login page | You | ✅ |
+| 1E.3 | **MANUAL TEST:** Log in with a test B2C account | You | ✅ |
+| 1E.4 | **MANUAL TEST:** Confirm redirect back to Portal (Next.js page loads) | You | ✅ |
+| 1E.5 | **MANUAL TEST:** Check browser dev tools → Network → verify `X-Auth-Request-Access-Token` header is present on Portal requests | You | ✅ |
+| 1E.6 | **MANUAL TEST:** Verify decoded JWT contains custom attributes (`extension_..._Status`, `extension_..._Role`, etc.) — use `/api/me` debug endpoint or browser console | You | ✅ |
 
-> **⏸ CHECKPOINT 1E:** Real B2C auth is working end-to-end locally. JWT with custom claims is reaching the Portal. Commit: `feat: local dev environment with real OAuth2-Proxy + B2C auth`. **Phase 1 complete.**
+**Notes:**
+- `/api/me` debug endpoint decodes both access token (`x-forwarded-access-token`) and ID token (`Authorization: Bearer`) for claim inspection.
+- Custom attributes only appear in the JWT when values are set via Graph API. B2C omits null-valued claims. Use `scripts/b2c-set-user.ps1` to populate them, then re-login.
+- Both `scripts/b2c-get-user.ps1` and `scripts/b2c-set-user.ps1` dynamically discover extension property names from the b2c-extensions-app (no hardcoded attribute names).
+- ID token carries custom attributes (via B2C user flow "Application claims"); access token carries standard OAuth scopes only.
+- `OAUTH2_PROXY_PASS_AUTHORIZATION_HEADER=true` forwards the ID token in the `Authorization` header alongside the access token.
+
+> **✅ CHECKPOINT 1E:** Real B2C auth is working end-to-end locally. JWT with custom claims is reaching the Portal. Commit: `feat: local dev environment with real OAuth2-Proxy + B2C auth`. **Phase 1 complete.**
 
 **Deliverable:** Clean TypeScript-only repo with working local dev environment. Real B2C login via OAuth2-Proxy returns valid JWT with custom attributes.
 

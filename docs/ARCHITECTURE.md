@@ -238,6 +238,23 @@ API routes live inside the Portal at `portal/src/app/api/`. They are served at `
 
 All API routes read the JWT from the `X-Auth-Request-Access-Token` header (injected by OAuth2-Proxy). No separate auth middleware needed — just base64-decode the payload.
 
+### Debug Endpoint
+
+`GET /api/me` decodes and returns claims from both tokens:
+- **Access token** from `x-forwarded-access-token` header (standard OAuth claims)
+- **ID token** from `Authorization: Bearer` header (custom B2C attributes: Status, Role, Username, ContainerPort)
+
+`OAUTH2_PROXY_PASS_AUTHORIZATION_HEADER=true` must be set for the ID token to be forwarded.
+
+### B2C User Management Scripts
+
+| Script | Purpose |
+|--------|---------|
+| `scripts/b2c-get-user.ps1` | Read all user attributes (standard + extension) via Graph API |
+| `scripts/b2c-set-user.ps1` | Write custom extension attributes (Status, Role, Username, ContainerPort) |
+
+Both scripts dynamically discover extension property names from the b2c-extensions-app — no hardcoded attribute names.
+
 ---
 
 ## Container Management Architecture

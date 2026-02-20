@@ -26,6 +26,9 @@ No Python. No Azure Functions. No separate API service.
 | docker-compose.yml | ✅ 4 services: oauth2-proxy, portal, admin-agent, token-proxy |
 | B2C dev app registration | ✅ With exposed API scope `access_as_user` |
 | Local dev auth (Checkpoint 1D) | ✅ B2C login → Portal loads successfully |
+| E2E auth verification (Checkpoint 1E) | ✅ JWT with custom claims reaching Portal |
+| B2C management scripts | ✅ `scripts/b2c-get-user.ps1`, `scripts/b2c-set-user.ps1` |
+| **Phase 1** | **✅ Complete** |
 
 ## Key Architectural Decisions
 
@@ -70,6 +73,13 @@ No subdomain routing locally. Subdomain routing tested on DEV (`*.dev.teamhitori
 - **Email claim** — B2C uses `emails` (array) not `email` (string). Set via `OAUTH2_PROXY_OIDC_EMAIL_CLAIM=emails`.
 - **Email verified** — B2C omits `email_verified` claim. Set via `OAUTH2_PROXY_INSECURE_OIDC_ALLOW_UNVERIFIED_EMAIL=true`.
 - **API scope** — B2C only issues an `access_token` when an API scope is requested. App registration must have **Expose an API** configured with scope `access_as_user`.
+- **ID token vs access token** — Custom attributes (Status, Role, Username, ContainerPort) appear in the **ID token** only (via B2C user flow "Application claims"). Access token carries standard OAuth scopes. `OAUTH2_PROXY_PASS_AUTHORIZATION_HEADER=true` forwards both.
+- **Null claims** — B2C omits claims with null values from the JWT. Extension attributes must have values set (via Graph API) to appear in tokens.
+
+### B2C Management Scripts
+
+- `scripts/b2c-get-user.ps1 -UserId <objectId>` — Display all user attributes including dynamically discovered extension properties, identities, and email.
+- `scripts/b2c-set-user.ps1 -UserId <objectId> -Status <status> -Role <role>` — Set custom extension attributes. Both scripts auto-discover extension property names from the b2c-extensions-app (no hardcoded names).
 
 ## Credentials
 
@@ -117,5 +127,6 @@ DNS: Azure DNS, wildcard *.teamhitori.com → VM
 1. Read this file for project context and credentials
 2. Read `docs/ARCHITECTURE.md` for all architectural decisions
 3. Read `docs/ROADMAP.md` for current phase and next tasks
-4. **Current state:** Phase 1 Checkpoint 1D is complete. Next: Checkpoint 1E (manual E2E auth verification), then Phase 2 (Portal UI MVP)
+4. **Current state:** Phase 1 is complete (all checkpoints 1A–1E ✅). **Next: Phase 2 — Portal UI MVP** (middleware, pages, API routes)
 5. Run `docker compose up` to start all 4 services. Open `http://localhost:4180` to test.
+6. Use `scripts/b2c-get-user.ps1` and `scripts/b2c-set-user.ps1` to manage B2C user attributes via Graph API.
