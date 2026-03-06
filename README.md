@@ -78,6 +78,7 @@ pocket-smyth-portal/
 | `/api/system/status` | GET | Admin | System overview |
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for all architectural decisions and technical details.
+For platform-wide architecture, see [logic-agent-platform/docs/platform-overview.md](https://github.com/teamhitori/logic-agent-platform/blob/main/docs/platform-overview.md).
 
 ## Development
 

@@ -12,6 +12,24 @@ Context document for AI agents continuing work on this repo.
 
 No Python. No Azure Functions. No separate API service.
 
+> **Platform overview:** See [logic-agent-platform/docs/platform-overview.md](https://github.com/teamhitori/logic-agent-platform/blob/main/docs/platform-overview.md) for the high-level cross-repo architecture, credential reference, and dependency map.
+
+### Scope Boundaries
+
+This project **owns:**
+- Portal UI (user dashboard, admin panel, onboarding, status screens)
+- Next.js API Routes (user management, admin endpoints)
+- Admin Agent sidecar (Docker management via dockerode)
+- Token Proxy (B2C compatibility workaround)
+- B2C management scripts (`scripts/b2c-get-user.ps1`, `scripts/b2c-set-user.ps1`)
+
+This project **does NOT own:**
+- Infrastructure provisioning, DNS, TLS, Traefik config (see `logic-agent-platform`)
+- Landing page at teamhitori.com (see `team-hitori-landing`)
+- Agent Zero runtime or Docker image (see `agent-zero` fork)
+- B2C tenant configuration (see `logic-agent-platform` docs)
+- Platform-wide credentials (see `logic-agent-platform/docs/platform-overview.md`)
+
 ## Current State
 
 | Component | Status |
@@ -83,26 +101,28 @@ No subdomain routing locally. Subdomain routing tested on DEV (`*.dev.teamhitori
 
 ## Credentials
 
-### B2C Custom Attributes
+> **Platform-wide credentials** (B2C tenant, Graph API, Hetzner, Azure DNS, Terraform state)
+> are maintained in [logic-agent-platform/docs/platform-overview.md](https://github.com/teamhitori/logic-agent-platform/blob/main/docs/platform-overview.md#credentials-reference-authoritative).
+> Do not duplicate them here — refer to that document.
 
+### Project-Specific Credentials
+
+**B2C Custom Attribute Extension Prefix** (needed for JWT claim parsing):
 ```
-Extension prefix: extension_3575970a911e4699ad1ccc1a507d2312_
+extension_3575970a911e4699ad1ccc1a507d2312_
 Attributes: Status (pending|approved|active|revoked), Role (user|admin), Username, ContainerPort
 ```
 
-### B2C Graph API
-
+**Admin Agent Shared Secret:**
 ```
-Tenant ID:        359dc45f-49b6-4472-92f1-092556a84a98
-Graph Client ID:  6c50fb10-e1d2-4ca7-be00-6cb29b7f474b
-Secret:           .env → B2C_GRAPH_CLIENT_SECRET
+ADMIN_AGENT_SECRET: stored in .env (Portal → Admin Agent auth)
 ```
 
-### Infrastructure
-
+**Dev B2C App Registration** (for local development OAuth2-Proxy):
 ```
-VM:  Hetzner CPX31, IP 178.156.214.79
-DNS: Azure DNS, wildcard *.teamhitori.com → VM
+Client ID / Secret: stored in .env as OAUTH2_PROXY_CLIENT_ID / OAUTH2_PROXY_CLIENT_SECRET
+Redirect URI: http://localhost:4180/oauth2/callback
+Exposed API scope: access_as_user → stored in .env as B2C_API_SCOPE
 ```
 
 ## Key Documents
