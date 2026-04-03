@@ -131,10 +131,10 @@ As an active user, I want a dashboard with clear navigation and agent controls s
 - [ ] **Header:** branding, user display name, logout action
 - [ ] **Sidebar:** navigation links — Dashboard, Settings
 - [ ] **Main content area:** agent status panel (see E10-F05), action buttons
-- [ ] **Launch Agent button:** prominently placed, opens `{username}.teamhitori.com/agent/` in a new browser tab (per AD-2)
+- [ ] **Launch Agent button:** prominently placed, opens `{username}.teamhitori.com` in a new browser tab (per AD-2)
 - [ ] **Status bar:** agent health indicator, uptime
 - [ ] Responsive layout (desktop and tablet)
-- [ ] Admin users see an additional "Admin" link in the sidebar (navigates to `/admin/*`)
+- [ ] Admin users see an "Admin" link in the sidebar (navigates to `admin.{DOMAIN}`)
 
 ---
 
@@ -185,10 +185,10 @@ As a user, I want API endpoints that let me view my profile, check my agent's st
   - Accessible to any authenticated user
 - [ ] `GET /api/me/agent` — returns agent container status
   - Response includes: state (running/stopped), CPU, memory, uptime
-  - Calls Admin Agent internally (`GET /containers/:name/stats` on `portal-net`)
+  - Calls Admin Service internally (`GET /containers/:name/stats` on `agent-network`)
   - Returns a meaningful response even when the container doesn't exist yet
 - [ ] `POST /api/me/agent/restart` — restarts the user's agent container
-  - Calls Admin Agent internally (`POST /containers/:name/restart`)
+  - Calls Admin Service internally (`POST /containers/:name/restart`)
   - Returns success/failure with descriptive message
   - Rate-limited to prevent abuse (at most once per 30 seconds)
 - [ ] `PUT /api/me/settings` — updates user preferences

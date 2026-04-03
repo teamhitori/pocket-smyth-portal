@@ -6,8 +6,8 @@ Context document for AI agents continuing work on this repo.
 
 **Pocket Smyth Portal** is the user-facing application layer for a multi-tenant AI agent platform. Two TypeScript deployables plus a lightweight sidecar:
 
-- **Portal** (`portal/`) — Next.js 14, serves `login.teamhitori.com` and `{username}.teamhitori.com`. Contains both UI and API Routes.
-- **Admin Agent** (`admin-agent/`) — Hono, Docker management sidecar via dockerode. Runs on `portal-net` only.
+- **Portal** (`portal/`) — Next.js 14, serves `login.teamhitori.com` and `{username}.teamhitori.com`. Contains user-facing UI and API Routes.
+- **Admin Service** (`admin-agent/`) — Hono, admin panel + Docker management via dockerode. Serves `admin.{DOMAIN}` behind OAuth2-Proxy. Published to ACR, deployed by logic-agent-platform.
 - **Token Proxy** (`token-proxy/`) — Node.js sidecar that fixes B2C token exchange (adds `scope` parameter that the Go oauth2 library omits).
 
 No Python. No Azure Functions. No separate API service.
@@ -17,16 +17,16 @@ No Python. No Azure Functions. No separate API service.
 ### Scope Boundaries
 
 This project **owns:**
-- Portal UI (user dashboard, admin panel, onboarding, status screens)
-- Next.js API Routes (user management, admin endpoints)
-- Admin Agent sidecar (Docker management via dockerode)
+- Portal UI (user dashboard, onboarding, status screens)
+- Next.js API Routes (user self-service endpoints)
+- Admin Service (admin panel + Docker management via dockerode)
 - Token Proxy (B2C compatibility workaround)
 - B2C management scripts (`scripts/b2c-get-user.ps1`, `scripts/b2c-set-user.ps1`)
 
 This project **does NOT own:**
 - Infrastructure provisioning, DNS, TLS, Traefik config (see `logic-agent-platform`)
 - Landing page at teamhitori.com (see `team-hitori-landing`)
-- Agent Zero runtime or Docker image (see `agent-zero` fork)
+- Agent Zero runtime or Docker image (upstream `agent-zero` — no fork needed)
 - B2C tenant configuration (see `logic-agent-platform` docs)
 - Platform-wide credentials (see `logic-agent-platform/docs/platform-overview.md`)
 
@@ -39,7 +39,7 @@ This project **does NOT own:**
 | Roadmap | ✅ `docs/ROADMAP.md` (6 phases) |
 | Old code removed | ✅ `api/`, `functions/`, `shared/python/`, `ruff.toml`, `mock-auth/` deleted |
 | Portal scaffolded | ✅ Next.js 14 with API route stubs |
-| Admin Agent scaffolded | ✅ Hono project with dockerode |
+| Admin Service scaffolded | ✅ Hono project with dockerode |
 | Token Proxy | ✅ B2C token exchange workaround (`token-proxy/proxy.js`) |
 | docker-compose.yml | ✅ 4 services: oauth2-proxy, portal, admin-agent, token-proxy |
 | B2C dev app registration | ✅ With exposed API scope `access_as_user` |
@@ -54,22 +54,21 @@ This project **does NOT own:**
 |---|---|
 | AD-1 | Hybrid SSR + client polling (10s) |
 | AD-2 | Launch button → new tab (not iframe) |
-| AD-3 | Admin Agent: Hono + dockerode sidecar |
+| AD-3 | Admin Service: Hono + dockerode (serves `admin.{DOMAIN}`) |
 | AD-4 | Soft delete only |
 | AD-5 | Immutable agent image + mutable user volumes |
 | AD-10 | TypeScript only — no Python |
 | AD-11 | API Routes inside Next.js (no separate API service) |
-| AD-12 | Synchronous provisioning (API → Admin Agent HTTP) |
+| AD-12 | Synchronous provisioning (API → Admin Service HTTP) |
 | AD-13 | No database for MVP (B2C + Docker state) |
 
 ## Quick Reference
 
 ```
 login.teamhitori.com              → Auth, onboarding, pending screens
-{username}.teamhitori.com         → Portal dashboard
-{username}.teamhitori.com/agent/* → Agent Zero (new tab, proxied to user container)
-{username}.teamhitori.com/api/*   → Next.js API Routes
-{username}.teamhitori.com/admin/* → Admin panel (admin only)
+admin.teamhitori.com              → Admin Service: admin panel + Docker management (behind OAuth2-Proxy)
+{username}.teamhitori.com         → User's agent (WebUI + Agent Zero runtime)
+{username}.teamhitori.com/api/*   → Next.js API Routes (user self-service)
 ```
 
 ## Local Dev
@@ -113,9 +112,9 @@ extension_3575970a911e4699ad1ccc1a507d2312_
 Attributes: Status (pending|approved|active|revoked), Role (user|admin), Username, ContainerPort
 ```
 
-**Admin Agent Shared Secret:**
+**Admin Service Shared Secret:**
 ```
-ADMIN_AGENT_SECRET: stored in .env (Portal → Admin Agent auth)
+ADMIN_AGENT_SECRET: stored in .env (Portal → Admin Service auth)
 ```
 
 **Dev B2C App Registration** (for local development OAuth2-Proxy):
@@ -129,7 +128,7 @@ Exposed API scope: access_as_user → stored in .env as B2C_API_SCOPE
 
 | Document | Contents |
 |----------|----------|
-| `docs/ARCHITECTURE.md` | URL structure, auth flow, local dev auth, Traefik routing, portal layout, API routes, Admin Agent, provisioning, security model, all ADs |
+| `docs/ARCHITECTURE.md` | URL structure, auth flow, local dev auth, Traefik routing, portal layout, API routes, Admin Service, provisioning, security model, all ADs |
 | `docs/ROADMAP.md` | 6-phase rollout plan |
 | [portal-spec.md](https://github.com/teamhitori/logic-agent-platform/blob/main/docs/portal-spec.md) | Full API spec, UI wireframes, data models |
 | [architecture.md](https://github.com/teamhitori/logic-agent-platform/blob/main/docs/architecture.md) | Platform-wide system architecture |
@@ -140,13 +139,13 @@ Exposed API scope: access_as_user → stored in .env as B2C_API_SCOPE
 |---|---|
 | [logic-agent-platform](https://github.com/teamhitori/logic-agent-platform) | Infrastructure, IaC, Traefik, Docker Compose templates |
 | [team-hitori-landing](https://github.com/teamhitori/team-hitori-landing) | Landing page at `teamhitori.com` |
-| [agent-zero](https://github.com/teamhitori/agent-zero) | Agent Zero AI framework (fork — modified for `/agent/` path prefix) |
+| [agent-zero](https://github.com/agent0ai/agent-zero) | Agent Zero AI framework (upstream — no fork needed) |
 
 ## How to Resume
 
 1. Read this file for project context and credentials
 2. Read `docs/ARCHITECTURE.md` for all architectural decisions
 3. Read `docs/ROADMAP.md` for current phase and next tasks
-4. **Current state:** Phase 1 is complete (all checkpoints 1A–1E ✅). **Next: Phase 2 — Portal UI MVP** (middleware, pages, API routes)
+4. **Current state:** Phase 1 is complete (all checkpoints 1A–1E ✅). **Next: R2 — Portal + Agent on DEV** (middleware, pages, API routes). See [logic-agent-platform/docs/project-epics.md](https://github.com/teamhitori/logic-agent-platform/blob/main/docs/project-epics.md) for the epic register.
 5. Run `docker compose up` to start all 4 services. Open `http://localhost:4180` to test.
 6. Use `scripts/b2c-get-user.ps1` and `scripts/b2c-set-user.ps1` to manage B2C user attributes via Graph API.

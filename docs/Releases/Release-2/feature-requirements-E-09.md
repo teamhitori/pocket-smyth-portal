@@ -69,7 +69,7 @@ As the portal, I want to determine the request context from the Host header so t
 **Acceptance Criteria:**
 - [ ] Reads `request.headers.host` to determine context
 - [ ] `login.*` hosts route to auth flows (`/pending`, `/onboarding`, `/revoked`)
-- [ ] `{username}.*` hosts route to dashboard flows (`/`, `/admin/*`, `/api/*`)
+- [ ] `{username}.*` hosts route to dashboard flows (`/`, `/api/*`)
 - [ ] Supports both DEV (`*.dev.teamhitori.com`) and PROD (`*.teamhitori.com`) patterns
 - [ ] Unknown or invalid subdomains result in a redirect to the login domain
 
@@ -94,7 +94,7 @@ As a user, I want to be automatically directed to the right page for my account 
 - [ ] `status=pending` on `login.*` → rewrite to `/pending`
 - [ ] `status=approved` on `login.*` → rewrite to `/onboarding`
 - [ ] `status=active` + `role=user` on `{username}.*` → allow through to `/` (dashboard)
-- [ ] `status=active` + `role=admin` on `{username}.*` → allow through to `/` or `/admin/*`
+- [ ] `status=active` + `role=admin` on `{username}.*` → allow through to `/` (dashboard; admin panel is at `admin.{DOMAIN}`)
 - [ ] `status=revoked` on `login.*` → rewrite to `/revoked`
 - [ ] Users cannot navigate to pages outside their status (e.g., a pending user cannot access the dashboard)
 
@@ -118,7 +118,7 @@ As a user, I want the portal to verify that I can only access my own subdomain s
 **Acceptance Criteria:**
 - [ ] For `{username}.*` hosts, the JWT `username` claim must match the subdomain
 - [ ] Mismatch results in a redirect to the user's correct subdomain (`{jwt-username}.teamhitori.com`)
-- [ ] Admin users follow the same rule (admins access their own subdomain; admin features are at `{admin-username}.teamhitori.com/admin/*`)
+- [ ] Admin users follow the same rule (admins access their own subdomain for dashboard; admin features are at `admin.{DOMAIN}`)
 
 ---
 

@@ -1,6 +1,6 @@
 # Architecture — Pocket Smyth Portal
 
-> Architecture for the Portal (Next.js + API Routes) and Admin Agent (Hono).
+> Architecture for the Portal (Next.js + API Routes) and Admin Service (Hono).
 > For infrastructure-level architecture, see [logic-agent-platform/docs/architecture.md](https://github.com/teamhitori/logic-agent-platform/blob/main/docs/architecture.md).
 
 ---
@@ -9,8 +9,8 @@
 
 | Deployable | Technology | Directory | Purpose |
 |---|---|---|---|
-| **Portal** | Next.js 14 (TypeScript) | `portal/` | UI + API Routes — serves all subdomains |
-| **Admin Agent** | Hono (TypeScript) | `admin-agent/` | Docker management sidecar via dockerode |
+| **Portal** | Next.js 14 (TypeScript) | `portal/` | UI + API Routes — serves `login.*` and `{username}.*` subdomains |
+| **Admin Service** | Hono (TypeScript) | `admin-agent/` | Admin panel + Docker management via dockerode, serves `admin.*` subdomain |
 | **Token Proxy** | Node.js (vanilla) | `token-proxy/` | B2C token exchange workaround — adds `scope` to token requests |
 
 Everything is TypeScript/JavaScript. No Python components.
@@ -21,17 +21,16 @@ Everything is TypeScript/JavaScript. No Python components.
 
 ```
 PROD:
-  teamhitori.com/pocketsmyth              → Product landing page (Azure SWA, separate repo)
+  teamhitori.com                          → Landing page (Azure SWA, separate repo)
   login.teamhitori.com                    → Auth domain: OAuth2-Proxy callback, onboarding, pending screens
-  {username}.teamhitori.com               → User portal dashboard
-  {username}.teamhitori.com/agent/*       → Agent Zero UI (proxied to user container)
-  {username}.teamhitori.com/api/*         → Next.js API Routes
-  {username}.teamhitori.com/admin/*       → Admin panel (admin users only)
+  admin.teamhitori.com                    → Admin Service: admin panel + Docker management (behind OAuth2-Proxy)
+  {username}.teamhitori.com               → User's agent (WebUI + Agent Zero runtime)
+  {username}.teamhitori.com/api/*         → Next.js API Routes (user self-service)
 
 DEV:
   login.dev.teamhitori.com               → Dev auth domain
-  {username}.dev.teamhitori.com           → Dev user portal
-  {username}.dev.teamhitori.com/agent/*   → Dev Agent Zero
+  admin.dev.teamhitori.com               → Admin Service (DEV, behind OAuth2-Proxy)
+  {username}.dev.teamhitori.com           → Dev user agent
   {username}.dev.teamhitori.com/api/*     → Dev API Routes
 
 LOCAL:
@@ -41,9 +40,10 @@ LOCAL:
 
 - DEV uses `*.dev.teamhitori.com` wildcard; PROD uses `*.teamhitori.com`. Separate OAuth2-Proxy cookie domains (`.dev.teamhitori.com` vs `.teamhitori.com`).
 - **Local dev has no subdomains.** OAuth2-Proxy runs on `localhost:4180` with a dev B2C app registration. Subdomain routing is tested on DEV.
-- One Next.js instance serves ALL subdomains. It reads `request.headers.host` to determine context:
+- One Next.js instance serves login and user subdomains. It reads `request.headers.host` to determine context:
   - `login.*` → auth/onboarding/pending routes
-  - `{username}.*` → dashboard, agent launch, admin panel
+  - `{username}.*` → dashboard, agent launch
+- Admin subdomains (`admin.*`) are served by the Admin Service (Hono), not the Portal.
 
 ---
 
@@ -81,7 +81,7 @@ LOCAL:
 | `pending` | any | `login.*` | `/pending` (static page) |
 | `approved` | any | `login.*` | `/onboarding` (wizard) |
 | `active` | `user` | `{username}.*` | `/` (dashboard) |
-| `active` | `admin` | `{username}.*` | `/` or `/admin/*` |
+| `active` | `admin` | `{username}.*` | `/` (dashboard) |
 | `revoked` | any | `login.*` | `/revoked` (static page) |
 
 After onboarding completes, the user is redirected from `login.teamhitori.com` to `{username}.teamhitori.com`.
@@ -121,7 +121,7 @@ Local dev uses a **real OAuth2-Proxy** container pointed at a **dev B2C app regi
 1. Create a **dev app registration** in the B2C tenant with redirect URI: `http://localhost:4180/oauth2/callback`
 2. **Expose an API** on the app registration: set Application ID URI, add scope `access_as_user`, grant admin consent
 3. Populate `.env` with `OAUTH2_PROXY_CLIENT_ID`, `OAUTH2_PROXY_CLIENT_SECRET`, `OAUTH2_PROXY_COOKIE_SECRET`, `B2C_OIDC_ISSUER_URL`, `B2C_API_SCOPE`, and `B2C_TOKEN_ENDPOINT_PATH`
-4. `docker compose up` — starts Portal + OAuth2-Proxy + Admin Agent + Token Proxy
+4. `docker compose up` — starts Portal + OAuth2-Proxy + Admin Service + Token Proxy
 
 ### B2C Compatibility Notes
 
@@ -153,21 +153,21 @@ All traffic enters via Traefik with TLS termination for `*.teamhitori.com` (DEV/
 
 ```yaml
 # Rule priority (highest to lowest):
-# 1. login.teamhitori.com → OAuth2-Proxy → Next.js (auth routes)
-# 2. {user}.teamhitori.com/api/* → OAuth2-Proxy → Next.js API Routes
-# 3. {user}.teamhitori.com/agent/* → User's Agent Zero container (port from B2C)
-# 4. {user}.teamhitori.com/* → OAuth2-Proxy → Next.js (portal shell)
+# 1. admin.teamhitori.com → OAuth2-Proxy → Admin Service (admin panel + Docker management)
+# 2. login.teamhitori.com → OAuth2-Proxy → Next.js (auth routes)
+# 3. {user}.teamhitori.com/api/* → OAuth2-Proxy → Next.js API Routes
+# 4. {user}.teamhitori.com/* → User's Agent Zero container (WebUI + runtime)
 ```
 
 | Rule | Target | Auth |
 |---|---|---|
+| `Host(admin.teamhitori.com)` | OAuth2-Proxy → Admin Service | OAuth2-Proxy handles |
 | `Host(login.teamhitori.com)` | OAuth2-Proxy → Next.js | OAuth2-Proxy handles |
 | `Host({user}.teamhitori.com) && PathPrefix(/api/)` | OAuth2-Proxy → Next.js API Routes | OAuth2-Proxy handles |
-| `Host({user}.teamhitori.com) && PathPrefix(/agent/)` | User container `:PORT` | Cookie (same domain) |
-| `Host({user}.teamhitori.com)` | OAuth2-Proxy → Next.js | OAuth2-Proxy handles |
+| `Host({user}.teamhitori.com)` | User container (WebUI + Agent Zero) | Cookie (same domain) |
 
 - **API Routes are behind OAuth2-Proxy.** Next.js API routes receive the `X-Auth-Request-Access-Token` header, same as UI routes.
-- Dynamic per-user routes are configured via Traefik's **file provider**, written by the Admin Agent when users are provisioned.
+- Dynamic per-user routes are configured via Traefik's **file provider**, written by the Admin Service when users are provisioned.
 
 ---
 
@@ -185,7 +185,7 @@ All traffic enters via Traefik with TLS termination for `*.teamhitori.com` (DEV/
 │  │          │  Agent Status: ● Running             ││
 │  │ Dashboard│  CPU: 12%  Memory: 256MB             ││
 │  │ Settings │                                      ││
-│  │ Admin ▸  │  ┌──────────────────────────┐        ││
+│  │          │  ┌──────────────────────────┐        ││
 │  │          │  │  🚀 Launch Agent         │        ││
 │  │          │  │  (opens new tab)         │        ││
 │  │          │  └──────────────────────────┘        ││
@@ -198,11 +198,11 @@ All traffic enters via Traefik with TLS termination for `*.teamhitori.com` (DEV/
 
 - **Launch button opens Agent Zero in a new browser tab** at `{username}.teamhitori.com/agent/`. No iframe.
 - Dashboard shows agent status, resource usage, and action buttons (restart, stop).
-- Admin users see an additional `/admin/*` section in the sidebar.
+- Admin users see a link to `admin.{DOMAIN}` in the sidebar.
 
-### Agent Zero Path Prefix
+### Agent Zero Integration
 
-Agent Zero will be forked to support a `/agent/` path prefix so it can be served at `{username}.teamhitori.com/agent/*` without conflicting with Portal routes.
+Agent Zero is used without forking — all customisation is via read-only volume mounts (`/a0/webui`, `/a0/agents/pocket-smyth`) and `A0_SET_*` environment variables. Each user's subdomain (`{username}.teamhitori.com`) routes directly to their Agent Zero container, which serves the WebUI.
 
 ### Portal Pages
 
@@ -212,31 +212,39 @@ Agent Zero will be forked to support a `/agent/` path prefix so it can be served
 | Revoked screen | `/revoked` | `status=revoked` | `login.*` |
 | Onboarding wizard | `/onboarding` | `status=approved`, no username | `login.*` |
 | User dashboard | `/` | Active users | `{user}.*` |
-| Admin dashboard | `/admin` | `role=admin` | `{user}.*` |
-| Admin: Pending users | `/admin/pending` | Admins | `{user}.*` |
-| Admin: User detail | `/admin/users/:id` | Admins | `{user}.*` |
 
 ---
 
-## Control Plane API (Next.js API Routes)
+## Control Plane API
 
-API routes live inside the Portal at `portal/src/app/api/`. They are served at `{username}.teamhitori.com/api/*` behind OAuth2-Proxy.
+### User API (Next.js API Routes)
+
+User self-service API routes live inside the Portal at `portal/src/app/api/`. They are served at `{username}.teamhitori.com/api/*` behind OAuth2-Proxy.
 
 | Endpoint | Method | Access | Description |
 |---|---|---|---|
 | `/api/me` | GET | User | Current user info (from B2C via Graph) |
-| `/api/me/agent` | GET | User | Agent container status (via Admin Agent) |
+| `/api/me/agent` | GET | User | Agent container status (via Admin Service) |
 | `/api/me/agent/restart` | POST | User | Restart own agent |
 | `/api/me/settings` | PUT | User | Update settings |
+
+### Admin API (Admin Service)
+
+Admin endpoints are served by the Admin Service at `admin.{DOMAIN}`. The Admin Service is a Hono application with its own routes — these are NOT Next.js API Routes.
+
+| Endpoint | Method | Access | Description |
+|---|---|---|---|
 | `/api/users` | GET | Admin | List all users |
 | `/api/users/:id/approve` | POST | Admin | Approve pending user → triggers provisioning |
 | `/api/users/:id/reject` | POST | Admin | Reject user |
 | `/api/users/:id/revoke` | POST | Admin | Revoke access (stop container, preserve data) |
 | `/api/users/:id` | DELETE | Admin | Soft delete (flag, stop container, preserve data) |
-| `/api/system/status` | GET | Admin | System resource overview (via Admin Agent) |
+| `/api/system/status` | GET | Admin | System resource overview |
 | `/api/system/config` | GET/PUT | Admin | System configuration |
 
-All API routes read the JWT from the `X-Auth-Request-Access-Token` header (injected by OAuth2-Proxy). No separate auth middleware needed — just base64-decode the payload.
+All user API routes read the JWT from the `X-Auth-Request-Access-Token` header (injected by OAuth2-Proxy). No separate auth middleware needed — just base64-decode the payload.
+
+Admin API routes in the Admin Service also read the JWT from OAuth2-Proxy headers. Admin role is validated on every request.
 
 ### Debug Endpoint
 
@@ -259,21 +267,21 @@ Both scripts dynamically discover extension property names from the b2c-extensio
 
 ## Container Management Architecture
 
-### Admin Agent (Sidecar Pattern)
+### Admin Service
 
 ```
-Next.js API Routes
+Portal API Routes (user self-service)
     │
-    │  HTTP (portal-net only, shared secret auth)
+    │  HTTP (agent-network, shared secret auth)
     ▼
-Admin Agent Container (Hono + dockerode)
+Admin Service Container (Hono + dockerode)
     │
     │  /var/run/docker.sock (mounted)
     ▼
 Docker Daemon → manages all user stacks
 ```
 
-The Admin Agent is a **Hono** (TypeScript) application using **dockerode** for Docker socket access. It exposes a scoped REST API on `portal-net` only:
+The Admin Service is a **Hono** (TypeScript) application using **dockerode** for Docker socket access. It serves both the admin panel UI (at `admin.{DOMAIN}`) and a scoped REST API on `agent-network`:
 
 | Endpoint | Method | Description |
 |---|---|---|
@@ -284,12 +292,14 @@ The Admin Agent is a **Hono** (TypeScript) application using **dockerode** for D
 | `/compose/up` | POST | Provision a new user stack from template |
 | `/compose/down` | POST | Tear down a user stack |
 
-**Port allocation:** Admin Agent scans running Docker containers to find the next available port. No database needed.
+**Port allocation:** Admin Service scans running Docker containers to find the next available port. No database needed.
 
-**Traefik config:** Admin Agent writes Traefik file provider YAML when provisioning/deprovisioning users, creating or removing dynamic routes for `{username}.*` subdomains.
+**Traefik config:** Admin Service writes Traefik file provider YAML when provisioning/deprovisioning users, creating or removing dynamic routes for `{username}.*` subdomains.
+
+**Deployment:** The Admin Service Docker image is built by pocket-smyth-portal and published to Azure Container Registry (ACR). logic-agent-platform deploys it as part of the Central Gateway compose stack.
 
 **Evolution path:**
-- **MVP (single VM):** Admin Agent container with `/var/run/docker.sock` mount, HTTP API on `portal-net`.
+- **MVP (single VM):** Admin Service container with `/var/run/docker.sock` mount, HTTP API on `agent-network`.
 - **Scale (multi-VM):** Promote to Node Agent pattern — one per VM, reporting to Control Plane via HTTPS.
 
 ### Container Image Strategy (AD-5)
@@ -309,7 +319,7 @@ The Admin Agent is a **Hono** (TypeScript) application using **dockerode** for D
 
 ## Provisioning Flow
 
-Provisioning is **synchronous** — the Portal API calls the Admin Agent directly via HTTP. No queues, no Azure Functions.
+Provisioning is **synchronous** — the Portal API calls the Admin Service directly via HTTP. No queues, no Azure Functions.
 
 ```
 Admin approves user (Portal UI)
@@ -327,10 +337,10 @@ User completes wizard: username + phone number
 Next.js API Route writes username to B2C
     │
     ▼
-Next.js API Route calls Admin Agent: POST /compose/up {username}
+Next.js API Route calls Admin Service: POST /compose/up {username}
     │
     ▼
-Admin Agent:
+Admin Service:
   1. Scans Docker for next available port
   2. Runs docker compose up for user stack
   3. Writes Traefik file provider YAML (dynamic route for {username}.*)
@@ -348,10 +358,10 @@ User redirected to {username}.teamhitori.com (dashboard)
 Admin revokes user (Portal UI)
     │
     ▼
-Next.js API Route calls Admin Agent: POST /compose/down {username}
+Next.js API Route calls Admin Service: POST /compose/down {username}
     │
     ▼
-Admin Agent:
+Admin Service:
   1. Stops container
   2. Removes Traefik file provider entry
     │
@@ -378,11 +388,11 @@ Use Next.js Middleware + React Server Components for initial page load (SSR), wi
 
 ### AD-2: Launch Button → New Tab
 
-Agent Zero opens in a **new browser tab** at `{username}.teamhitori.com/agent/`. The Portal serves as a dashboard and control surface — not a wrapper shell. This avoids iframe sandboxing complexity, gives Agent Zero the full viewport, and the auth cookie covers both paths (same origin).
+Agent Zero opens in a **new browser tab** at `{username}.teamhitori.com`. The Portal serves as a dashboard and control surface — not a wrapper shell. This avoids iframe sandboxing complexity, gives Agent Zero the full viewport, and the auth cookie covers both paths (same origin).
 
-### AD-3: Admin Agent Container (Hono + dockerode)
+### AD-3: Admin Service (Hono + dockerode)
 
-Dedicated TypeScript sidecar container with Docker socket access via dockerode. Separates business logic from Docker operations. Evolves to Node Agent pattern for multi-VM.
+Dedicated TypeScript container with Docker socket access via dockerode. Serves the admin panel UI and handles Docker management operations. Deployed to `admin.{DOMAIN}` behind OAuth2-Proxy. Image published to ACR. Evolves to Node Agent pattern for multi-VM.
 
 ### AD-4: Soft Delete Only
 
@@ -414,7 +424,7 @@ Email notification to admin(s) on new sign-up. Admin dashboard shows pending cou
 | SSR + 10s polling | ✅ | WebSocket/SSE |
 | Onboarding wizard | ✅ | Extended preferences |
 | Admin approval + email | ✅ | Slack/webhook integrations |
-| Admin Agent (Hono sidecar) | ✅ | Node Agent (multi-VM) |
+| Admin Service (Hono) | ✅ | Node Agent (multi-VM) |
 | Port scanning (dynamic) | ✅ | Port recycling |
 | Soft delete (flag-based) | ✅ | Automated cleanup + backup |
 | Real OAuth2-Proxy locally | ✅ | — |
@@ -435,7 +445,7 @@ The Control Plane API is implemented as Next.js API Routes (`portal/src/app/api/
 
 ### AD-12: Synchronous Provisioning
 
-Provisioning is a synchronous HTTP call from Portal API → Admin Agent. No Azure Queue Storage, no Azure Functions. The Admin Agent runs `docker compose up` and returns when complete. Acceptable latency for MVP (10 users).
+Provisioning is a synchronous HTTP call from Portal API → Admin Service. No Azure Queue Storage, no Azure Functions. The Admin Service runs `docker compose up` and returns when complete. Acceptable latency for MVP (10 users).
 
 ### AD-13: No Database for MVP
 
@@ -455,7 +465,7 @@ The user environment is **untrusted by design** — each user gets a powerful, a
 | T2 | Cross-user network/volume access | Critical | Per-user Docker network, scoped volume mounts | MVP |
 | T3 | Resource exhaustion (fork bomb, disk fill) | High | CPU/memory/PID/storage limits per container | MVP |
 | T4 | Agent Zero corruption/deletion | Medium | Immutable image + mutable volumes (AD-5) | MVP |
-| T5 | Network pivot to portal-net/Docker API | High | Network isolation, Docker socket only on Admin Agent | MVP |
+| T5 | Network pivot to agent-network/Docker API | High | Network isolation, Docker socket only on Admin Service | MVP |
 | T6 | Volume mount escape (symlinks) | High | Scoped mounts, no host path access | Post-MVP |
 | T7 | Subdomain spoofing (accessing another user's portal) | High | JWT username ↔ Host subdomain validation in middleware | MVP |
 
@@ -466,7 +476,7 @@ The user environment is **untrusted by design** — each user gets a powerful, a
 - **seccomp profiles:** Restrict syscalls to safe subset
 - **AppArmor profiles:** Mandatory access controls
 - **Read-only root filesystem:** Agent Zero image as read-only, tmpfs for `/tmp`
-- **No Docker socket in user containers:** Only Admin Agent has socket access
+- **No Docker socket in user containers:** Only Admin Service has socket access
 
 ---
 
@@ -531,4 +541,4 @@ sign-up → pending → [admin approves] → approved → [onboarding] → activ
 
 - [portal-spec.md](https://github.com/teamhitori/logic-agent-platform/blob/main/docs/portal-spec.md) — Full API spec, UI wireframes, data models
 - [architecture.md](https://github.com/teamhitori/logic-agent-platform/blob/main/docs/architecture.md) — Platform-wide system architecture
-- [roadmap.md](https://github.com/teamhitori/logic-agent-platform/blob/main/docs/roadmap.md) — Phased plan (infrastructure phases)
+- [project-epics.md](https://github.com/teamhitori/logic-agent-platform/blob/main/docs/project-epics.md) — Epic register and release plan
